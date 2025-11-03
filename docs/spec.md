@@ -1,9 +1,7 @@
 
 ## TECH STACK
 - node
-- json-colorizer
-- yargs
-- mock-fs
+
 
 
 <br/>
@@ -20,9 +18,6 @@
 |   |-- core.js   // 核心的呼叫邏輯，會根據 flags 做不同的事情
 |   |-- utils
 |        |-- ...
-|   |-- constants
-|        |-- ..
-| -- test
 |-- package.json
 ```
 
@@ -248,8 +243,16 @@ exist                  20MB.     isDir=true
 
 WHEN：my-ls --123
 
-THEN：(參考 ls)
-ls: -123: No such file or directory
+THEN：
+process.stderr.write(invalid option) 、process.exit(1)
+
+<br/> 
+<br/> 
+
+WHEN：my-ls -1a
+
+THEN：
+process.stderr.write(invalid option) 、process.exit(1)
 
 <br/> 
 <br/> 
