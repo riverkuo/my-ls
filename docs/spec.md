@@ -60,13 +60,14 @@ graph TD
     N -- 是 --> O[錯誤]
     N -- 否 --> I{是否有其他 flags?}
     G --> I
-    I -- 無 --> J[output]
+    I -- 無 --> P[預設 classic 格式]
     I -- 有 all --> L[顯示隱藏檔案]
     I -- 有 long --> M[顯示 1.是否為 folder   2.是的話要顯示 folder size]
-    I -- 有 output=JSON or classic --> P[預設 classic，有 output=JSON or classic => 以指定格式輸出]
-    L --> J
+    I -- 有 output=JSON or classic --> X[有 output=JSON or classic => 以指定格式輸出]
+    L --> J[output]
     M --> J
     P --> J
+    X --> J
 
 ```
 
