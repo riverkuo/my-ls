@@ -1,6 +1,5 @@
 
 ## TECH STACK
-- pnpm
 - node
 - json-colorizer
 - yargs
