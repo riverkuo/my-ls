@@ -1,5 +1,5 @@
 import { printHelp, printVersion } from './output.js';
-import { ARGS } from './index.js';
+import { ARGS } from './constants/config.js';
 
 function handleHelpAndVersion({ helpArgs, versionArgs, tokens }) {
   if (helpArgs && versionArgs) {

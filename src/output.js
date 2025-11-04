@@ -1,6 +1,6 @@
 import packageJson from '../package.json' with { type: 'json' };
 import { inspect } from 'util';
-import { OUTPUT_OPTIONS, ARGS } from './index.js';
+import { OUTPUT_OPTIONS, ARGS } from './constants/config.js';
 
 function printHelp() {
   console.log(`${packageJson.name} - ${packageJson.description}
