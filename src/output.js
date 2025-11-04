@@ -1,6 +1,5 @@
 import packageJson from '../package.json' with { type: 'json' };
-import { inspect } from 'util';
-import { OUTPUT_OPTIONS, ARGS } from './constants/config.js';
+import { OUTPUT_OPTIONS } from './constants/config.js';
 
 function printHelp() {
   console.log(`${packageJson.name} - ${packageJson.description}
@@ -41,13 +40,12 @@ function printOutput({ outputArgs, successFiles, errorFiles }) {
       console.log(JSON.stringify(successFiles));
     } else {
       successFiles.forEach((file,index) => {
-        if (successFiles.length > 1) {
-          if(file.isDir) {
+        if (successFiles.length > 1 && file.isDir) {
             console.log(file.name+":");
+          } else if(file.isDir && successFiles.length === 1) {
           } else {
             console.log(generateResultString(file));
           }
-        }
 
         if (file.children) {
           file.children.forEach((childFile) => {
@@ -55,7 +53,9 @@ function printOutput({ outputArgs, successFiles, errorFiles }) {
           });
         }
 
-        if(index + 1 < successFiles.length) {
+        const nextFile = successFiles[index + 1];
+
+        if(nextFile && !nextFile.isDir && file.isDir) {
           console.log('\n');
         }
 
@@ -70,7 +70,7 @@ function printOutput({ outputArgs, successFiles, errorFiles }) {
 
 
 function generateResultString(file){
-  return file.name + (("isDir" in file) ? ` | ${file.isDir ? 'd' : 'f'} | ${file.size ? file.size + "kb" : '-'} | ${file.mtime ? file.mtime : '-'}` : "");
+  return file.name + (("size" in file) ? ` | ${file.isDir ? 'd' : 'f'} | ${file.size ? file.size + "kb" : '-'} | ${file.mtime ? file.mtime : '-'}` : "");
 }
 
 export { printHelp, printVersion, printOutput };
