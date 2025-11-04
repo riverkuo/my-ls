@@ -138,3 +138,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+
+# E2E test files
+my-ls-e2e-*/
