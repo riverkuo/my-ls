@@ -1,7 +1,7 @@
 import process from 'process';
 import { parseArgs } from 'util';
 import packageJson from '../package.json' with { type: 'json' };
-import { handleReadFiles } from './read-file.js';
+import { handleReadFiles } from './file-reader/index.js';
 import { printOutput } from './output.js';
 import { handleHelpAndVersion } from './help-and-version.js';
 import { ARGS, OPTIONS, OUTPUT_OPTIONS } from './constants/config.js';
@@ -74,7 +74,4 @@ async function run(args) {
 
 export {
   run,
-  ARGS,
-  OUTPUT_OPTIONS,
-  OPTIONS,
 };
