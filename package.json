@@ -1,8 +1,11 @@
 {
   "name": "my-ls",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "custom ls command",
+  "type": "module",
+  "bin": {
+    "my-ls": "bin/cli.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
