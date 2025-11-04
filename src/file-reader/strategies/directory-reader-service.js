@@ -1,4 +1,4 @@
-import { BaseReader } from './base-reader.js';
+import { BaseReader } from './base-reader-service.js';
 import { readDirectory } from './shared.js';
 import process from 'process';
 

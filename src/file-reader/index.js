@@ -1,6 +1,6 @@
-import { PathReader } from './strategies/path-reader.js';
-import { RegexReader } from './strategies/regex-reader.js';
-import { DirectoryReader } from './strategies/directory-reader.js';
+import { PathReader } from './strategies/path-reader-service.js';
+import { RegexReader } from './strategies/regex-reader-service.js';
+import { DirectoryReader } from './strategies/directory-reader-service.js';
 
 export async function handleReadFiles({ positionals, longArgs, allArgs, regexArgs }) {
   //   if (positionals.length > 0 && regexArgs) {

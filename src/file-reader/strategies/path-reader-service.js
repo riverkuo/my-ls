@@ -1,6 +1,6 @@
 import path from 'path';
 import fsPromises from 'fs/promises';
-import { BaseReader } from './base-reader.js';
+import { BaseReader } from './base-reader-service.js';
 import { getFilenameFromPath } from '../../utils/index.js';
 import { readDirectory } from './shared.js';
 

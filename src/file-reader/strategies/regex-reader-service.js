@@ -1,6 +1,6 @@
-import { BaseReader } from './base-reader.js';
+import { BaseReader } from './base-reader-service.js';
 import { readDirectory } from './shared.js';
-import { PathReader } from './path-reader.js';
+import { PathReader } from './path-reader-service.js';
 
 /**
  * Regex 讀取策略
