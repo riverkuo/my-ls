@@ -255,7 +255,7 @@ classic 格式輸出（不是 JSON 格式）
 <br/>
 <br/>
 
-[ ] 12. regex args 可以用 args 搜尋，多個時應該為聯集，且不可重複
+[x] 12. regex args 可以用 args 搜尋，多個時應該為聯集，且不可重複
 
 WHEN：my-ls --regex 'e\*' --long
 
@@ -267,7 +267,7 @@ exist (isDir=true)
 <br/> 
 <br/>
 
-[ ] 13. regex - 當前目錄 .txt 檔
+[x] 13. regex - 當前目錄 .txt 檔
 
 WHEN：my-ls --regex '^[^/]\*\.txt$'
 
@@ -279,7 +279,7 @@ example.txt
 <br/> 
 <br/>
 
-[ ] 14. regex - 遞迴搜尋所有 .txt
+[x] 14. regex - 遞迴搜尋所有 .txt
 
 WHEN：my-ls --regex '^.\*\.txt$'
 
@@ -293,7 +293,7 @@ data.txt
 <br/> 
 <br/>
 
-[ ] 15. regex - 多個 patterns 聯集
+[x] 15. regex - 多個 patterns 聯集
 
 WHEN：my-ls --regex '^[^/]\*\.txt$' '^app\.js$'
 
@@ -306,7 +306,7 @@ app.js
 <br/> 
 <br/>
 
-[ ] 15a. regex - 多個 patterns 去重（同一個檔案被多個 pattern 匹配）
+[x] 15a. regex - 多個 patterns 去重（同一個檔案被多個 pattern 匹配）
 
 WHEN：my-ls --regex '^exist\.txt$' '^.*\.txt$'
 
@@ -320,7 +320,7 @@ data.txt
 <br/> 
 <br/>
 
-[ ] 16. regex - 匹配目錄
+[x] 16. regex - 匹配目錄
 
 WHEN：my-ls --regex '^src$'
 
@@ -333,7 +333,7 @@ utils
 <br/> 
 <br/>
 
-[ ] 17. regex - 無效 pattern
+[x] 17. regex - 無效 pattern
 
 WHEN：my-ls --regex '\*'
 
@@ -343,7 +343,7 @@ process.stderr.write (Invalid regular expression) 、process.exit(3)
 <br/> 
 <br/>
 
-[ ] 18. regex - 部分無效 patterns
+[x] 18. regex - 部分無效 patterns
 
 WHEN：my-ls --regex '^exist\.txt$' '\*'
 
@@ -354,7 +354,7 @@ process.stderr.write (Invalid regular expression) 、process.exit(3)
 <br/> 
 <br/>
 
-[ ] 19. regex - 匹配隱藏資料夾（. 開頭）
+[x] 19. regex - 匹配隱藏資料夾（. 開頭）
 
 WHEN：my-ls --regex '^\.hiddenfolder$'
 
@@ -365,7 +365,7 @@ visible.txt
 <br/> 
 <br/>
 
-[ ] 20. regex - 匹配隱藏資料夾中的第一層檔案
+[x] 20. regex - 匹配隱藏資料夾中的第一層檔案
 
 WHEN：my-ls --regex '^\.hiddenfolder/[^/]\*\.txt$'
 
@@ -377,7 +377,7 @@ THEN：
 <br/> 
 <br/>
 
-[ ] 21. regex - 匹配隱藏資料夾中的所有檔案（包括子資料夾，遞迴）
+[x] 21. regex - 匹配隱藏資料夾中的所有檔案（包括子資料夾，遞迴）
 
 WHEN：my-ls --regex '^\.hiddenfolder/.\*\.txt$'
 
@@ -390,7 +390,7 @@ THEN：
 <br/> 
 <br/>
 
-[ ] 22. regex - 匹配資料夾中的隱藏檔案（要求有 /）
+[x] 22. regex - 匹配資料夾中的隱藏檔案（要求有 /）
 
 WHEN：my-ls --regex '^._/\.hidden._\.txt$'
 
@@ -401,7 +401,7 @@ THEN：
 <br/> 
 <br/>
 
-[ ] 23. regex - 匹配當前目錄的隱藏檔案
+[x] 23. regex - 匹配當前目錄的隱藏檔案
 
 WHEN：my-ls --regex '^\.hiddenfile\.txt$'
 
@@ -411,7 +411,7 @@ THEN：
 <br/> 
 <br/>
 
-[ ] 24. regex - 合法 pattern 但沒有匹配到任何檔案
+[x] 24. regex - 合法 pattern 但沒有匹配到任何檔案
 
 WHEN：my-ls --regex '^nonexistent\.mp3$'
 
@@ -421,7 +421,7 @@ process.stderr.write (No such file or directory) 、process.exit(3)
 <br/> 
 <br/>
 
-[ ] 25. regex - 多個 patterns 部分沒匹配到
+[x] 25. regex - 多個 patterns 部分沒匹配到
 
 WHEN：my-ls --regex '^exist\.txt$' '^nonexistent\.mp3$'
 
