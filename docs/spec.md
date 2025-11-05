@@ -4,7 +4,7 @@
 
 <br/>
 
-## 專案架構
+## 專案架構 TODO
 
 ```javascript
 |-- docs          // 相關文件
@@ -107,248 +107,327 @@ graph TD
 - `~/Document/exist.txt`
 - `~/Document/exist/index.js`
 - `~/Document/.hiddenfile.txt`
+- `~/Document/example.txt`
+- `~/Document/app.js`
+- `~/Document/src/config.js`
+- `~/Document/src/utils/helper.txt`
+- `~/Document/test/data.txt`
+- `~/Document/.hiddenfolder/.hiddenfile-inside.txt`
+- `~/Document/.hiddenfolder/visible.txt`
+- `~/Document/.hiddenfolder/.hidden-subfolder/subfile.txt`
 
 <br/>
 <br/>
 
-[x] 1. 找得到檔案非隱藏的所有檔案
+搭配多種模式
+
+a. 使用全域 cli
+b. 使用 file 直接下 cli
+
+a. 相對路徑
+b. 絕對路徑
+
+<br/>
+<br/>
+
+[x] 1. 無參數
 
 WHEN：my-ls
 
 THEN：
-exist.txt exist
+exist.txt
+exist
+(不包含隱藏檔案)
 
 <br/>
 <br/>
 
-[x] 2. 找得到檔案隱藏的所有檔案
+[x] 2. --all
 
-WHEN：my-ls -a
+WHEN：my-ls --all
 
 THEN：
-exist.txt exist .hiddenfile.txt
+exist.txt
+exist
+.hiddenfile.txt
+(包含隱藏檔案)
 
 <br/>
 <br/>
 
-[x] 3. 找不到不存在的檔案
+[x] 3. --long（用 JSON 驗證鍵名）
 
-WHEN：my-ls non-exist.txt
+WHEN：my-ls --long --output=json
 
 THEN：
-process.stderr.write 、process.exit(3)
+JSON 格式輸出，包含 "isDir" 鍵
 
 <br/>
 <br/>
 
-[x] 4. long args 可以顯示細節
+[x] 4. output=json
 
-WHEN：my-ls -l
+WHEN：my-ls --output=json
 
 THEN：
-exist.txt - isDir=false
-exist 10MB isDir=true
+JSON 格式輸出（以 [ 開頭）
 
 <br/>
 <br/>
 
-[ ] 5. regex args 可以用 args 搜尋，多個時應該為聯集，且不可重複
-
-WHEN：my-ls e\* -lr
-
-THEN：
-exist.txt - isDir=false
-exist 20MB. isDir=true
-
-<br/> 
-<br/>
-
-[ ] 6. regex args 找不到不相符的檔案
-
-WHEN：my-ls m\*.mp3 --regex
-
-THEN：
-process.stderr.write 、process.exit(3)
-
-<br/>
-<br/>
-
-[ ] 7. help args 可以看內容
-
-WHEN：my-ls -la -h -v
-
-THEN：help 內容
-
-<br/>
-<br/>
-
-[x] 8. version args 可以看版本號
-
-WHEN：my-ls -la -v -h
-
-THEN：version
-
-<br/> 
-<br/>
-
-[x] 9. long all args 可以合併使用
-
-WHEN：my-ls -la
-
-THEN：
-exist.txt - isDir=false
-exist 10MB. isDir=true
-.hddenfile.txt - isDir=false
-
-<br/> 
-<br/>
-
-[x] 10. 可以搜尋多個指定目標，若為 directory 要列出第一層子層的內容
+[x] 5. 指定多目標（檔案 + 目錄），目錄列第一層
 
 WHEN：my-ls exist.txt exist
 
-THEN：（資料夾會列出第一層裡面的內容，參考 ls）
+THEN：
 exist.txt
 
 exist:
 index.js
+(目錄列出第一層內容)
 
 <br/>
 <br/>
 
-[x] 11. 可子指定 output args = classic | json，預設為 classic，後面會覆蓋前面
+[x] 6. 單一檔案（相對/絕對）
 
-WHEN：my-ls exist.txt --output=json --output=classic
-
-THEN：後面會覆蓋前面的（參考 ls）、格式參考上述
-
-<br/>
-<br/>
-
-[x] 12. 可以找 path、多個 path，檔名就好
 WHEN：my-ls exist/index.js
 
-THEN：要可以找 path(參考 ls)、
+THEN：
 index.js
 
 <br/>
 <br/>
 
-[x] 13. args 與 positionals 不受先後順序影響
-
-WHEN：my-ls --regex -l e\*
-
-THEN：不受 args 和 flag 先後順序影響
-exist.txt - isDir=false
-exist 20MB. isDir=true
-
-<br/>
-<br/>
-
-[x] 14.不合法的 args，exit(1)
-
-WHEN：my-ls --123
-
-THEN：
-process.stderr.write(Unknown option) 、process.exit(1)
-
-<br/> 
-<br/>
-
-[x] 15. args 一個合法一個不合法，exit(1)
-
-WHEN：my-ls -1a
-
-THEN：
-process.stderr.write(Unknown option) 、process.exit(1)
-
-<br/> 
-<br/>
-
-[x] 16. 一個找得到一個找不到，找到的要列出來、找不到的要 exit(3)
+[x] 7. 找不到的檔案（混合：一個存在一個不存在），應 exit 3
 
 WHEN：my-ls non-exist exist.txt
 
 THEN：
-process.stderr.write("") 、process.stderr.write 、process.exit(3)
+process.stderr.write (No such file or directory) 、process.exit(3)
+exist.txt (正常輸出)
 
-exist
-
-<br/> 
+<br/>
 <br/>
 
-[x] 17. position 和 regex 同時存在
+[x] 8. 不合法的 flag，exit=1
 
-WHEN：my-ls --regex file
+WHEN：my-ls --123
 
 THEN：
-process.stderr.write("Command-line usage error") 、process.stderr.write 、process.exit(64)
+process.stderr.write (Unknown option) 、process.exit(1)
 
-<br/> 
+<br/>
 <br/>
 
-[ ] 18. glob
+[x] 9. help/version 先後順序（不驗證順序內容，只驗證能執行）
 
-WHEN：
+WHEN：my-ls -h -v
 
 THEN：
+顯示 help 內容
 
-<br/> 
-<br/>
-
-[x] 19. 可以全域使用 my-ls
-
-[x] a. npm link
-
-[ ] b. export PATH=$PATH:{資料夾路徑}
-
-<br/> 
-<br/>
-
-[ ] 20. shell script 測試
-
-WHEN：
+WHEN：my-ls -v -h
 
 THEN：
+顯示 version 或 help（根據先後順序）
 
-<br/> 
+<br/>
 <br/>
 
-[ ] 21. 重構、架構
+[x] 10. flags 與位置參數先後無關（使用 f1，JSON 驗證）
 
-WHEN：
+WHEN：my-ls --long --output=json exist.txt
 
 THEN：
+JSON 格式輸出，包含 "isDir" 鍵
 
-<br/> 
+<br/>
 <br/>
 
-[ ] 22. man
+[x] 11. output 覆蓋（最後一個生效）
 
-WHEN：
+WHEN：my-ls --output=json --output=classic
 
 THEN：
+classic 格式輸出（不是 JSON 格式）
+
+<br/>
+<br/>
+
+[ ] 12. regex args 可以用 args 搜尋，多個時應該為聯集，且不可重複
+
+WHEN：my-ls --regex 'e\*' --long
+
+THEN：
+exist.txt (isDir=false)
+exist (isDir=true)
+(包含 isDir 資訊)
 
 <br/> 
 <br/>
 
-[x] 23. 細節統整
+[ ] 13. regex - 當前目錄 .txt 檔
 
-isDir:
-size:
-mtime:
-mode:
-isSymbolicLink:
+WHEN：my-ls --regex '^[^/]\*\.txt$'
 
-<br/> 
-<br/>
-
-[x] 24. help 和 version 同時出現的話，會顯示優先次序前面的
+THEN：
+exist.txt
+example.txt
+(不包含子資料夾中的 helper.txt)
 
 <br/> 
 <br/>
 
-[ ] 25. 全域用參數
+[ ] 14. regex - 遞迴搜尋所有 .txt
+
+WHEN：my-ls --regex '^.\*\.txt$'
+
+THEN：
+exist.txt
+example.txt
+helper.txt
+data.txt
+(包含所有層級的 .txt 檔案)
 
 <br/> 
+<br/>
+
+[ ] 15. regex - 多個 patterns 聯集
+
+WHEN：my-ls --regex '^[^/]\*\.txt$' '^app\.js$'
+
+THEN：
+exist.txt
+example.txt
+app.js
+(多個 patterns 的聯集結果)
+
+<br/> 
+<br/>
+
+[ ] 15a. regex - 多個 patterns 去重（同一個檔案被多個 pattern 匹配）
+
+WHEN：my-ls --regex '^exist\.txt$' '^.*\.txt$'
+
+THEN：
+exist.txt (只出現一次)
+example.txt
+helper.txt
+data.txt
+(同一個檔案被多個 pattern 匹配時應該只出現一次)
+
+<br/> 
+<br/>
+
+[ ] 16. regex - 匹配目錄
+
+WHEN：my-ls --regex '^src$'
+
+THEN：
+src:
+config.js
+utils
+(匹配到目錄時列出第一層內容)
+
+<br/> 
+<br/>
+
+[ ] 17. regex - 無效 pattern
+
+WHEN：my-ls --regex '\*'
+
+THEN：
+process.stderr.write (Invalid regular expression) 、process.exit(3)
+
+<br/> 
+<br/>
+
+[ ] 18. regex - 部分無效 patterns
+
+WHEN：my-ls --regex '^exist\.txt$' '\*'
+
+THEN：
+exist.txt (正常輸出)
+process.stderr.write (Invalid regular expression) 、process.exit(3)
+
+<br/> 
+<br/>
+
+[ ] 19. regex - 匹配隱藏資料夾（. 開頭）
+
+WHEN：my-ls --regex '^\.hiddenfolder$'
+
+THEN：
+visible.txt
+(匹配到 .hiddenfolder 資料夾，列出第一層內容，只顯示非隱藏檔案)
+
+<br/> 
+<br/>
+
+[ ] 20. regex - 匹配隱藏資料夾中的第一層檔案
+
+WHEN：my-ls --regex '^\.hiddenfolder/[^/]\*\.txt$'
+
+THEN：
+.hiddenfolder/visible.txt
+.hiddenfolder/.hiddenfile-inside.txt
+(不包含子資料夾中的檔案)
+
+<br/> 
+<br/>
+
+[ ] 21. regex - 匹配隱藏資料夾中的所有檔案（包括子資料夾，遞迴）
+
+WHEN：my-ls --regex '^\.hiddenfolder/.\*\.txt$'
+
+THEN：
+.hiddenfolder/visible.txt
+.hiddenfolder/.hiddenfile-inside.txt
+.hiddenfolder/.hidden-subfolder/subfile.txt
+(包含所有層級的檔案)
+
+<br/> 
+<br/>
+
+[ ] 22. regex - 匹配資料夾中的隱藏檔案（要求有 /）
+
+WHEN：my-ls --regex '^._/\.hidden._\.txt$'
+
+THEN：
+.hiddenfolder/.hiddenfile-inside.txt
+(不包含根目錄的 .hiddenfile.txt，因為沒有 /)
+
+<br/> 
+<br/>
+
+[ ] 23. regex - 匹配當前目錄的隱藏檔案
+
+WHEN：my-ls --regex '^\.hiddenfile\.txt$'
+
+THEN：
+.hiddenfile.txt
+
+<br/> 
+<br/>
+
+[ ] 24. regex - 合法 pattern 但沒有匹配到任何檔案
+
+WHEN：my-ls --regex '^nonexistent\.mp3$'
+
+THEN：
+process.stderr.write (No such file or directory) 、process.exit(3)
+
+<br/> 
+<br/>
+
+[ ] 25. regex - 多個 patterns 部分沒匹配到
+
+WHEN：my-ls --regex '^exist\.txt$' '^nonexistent\.mp3$'
+
+THEN：
+exist.txt (正常輸出)
+process.stderr.write (No such file or directory) 、process.exit(3)
+
+<br/>
 <br/>

@@ -31,10 +31,29 @@ make_fixture() {
   # 創建臨時目錄並確保是絕對路徑
   local tmp_base="$(mktemp -d "${REPO_NAME}-e2e-XXXXXX")"
   TMP_DIR="$(cd "$tmp_base" && pwd)"
-  mkdir -p "$TMP_DIR/exist"
-  printf "hello\n" > "$TMP_DIR/exist.txt"
-  printf "console.log('hi')\n" > "$TMP_DIR/exist/index.js"
-  printf "hidden\n" > "$TMP_DIR/.hiddenfile.txt"
+  
+  # 創建測試檔案目錄和輸出目錄
+  mkdir -p "$TMP_DIR/test-fixtures"
+  mkdir -p "$TMP_DIR/test-output"
+  
+  # 在 test-fixtures 中創建測試檔案
+  mkdir -p "$TMP_DIR/test-fixtures/exist"
+  printf "hello\n" > "$TMP_DIR/test-fixtures/exist.txt"
+  printf "console.log('hi')\n" > "$TMP_DIR/test-fixtures/exist/index.js"
+  printf "hidden\n" > "$TMP_DIR/test-fixtures/.hiddenfile.txt"
+  printf "example\n" > "$TMP_DIR/test-fixtures/example.txt"
+  printf "console.log('app')\n" > "$TMP_DIR/test-fixtures/app.js"
+  mkdir -p "$TMP_DIR/test-fixtures/src/utils"
+  printf "const config = {}\n" > "$TMP_DIR/test-fixtures/src/config.js"
+  printf "helper\n" > "$TMP_DIR/test-fixtures/src/utils/helper.txt"
+  mkdir -p "$TMP_DIR/test-fixtures/test"
+  printf "data\n" > "$TMP_DIR/test-fixtures/test/data.txt"
+  # 創建隱藏資料夾，包含 hidden files 和 non-hidden files
+  mkdir -p "$TMP_DIR/test-fixtures/.hiddenfolder"
+  printf "hidden inside\n" > "$TMP_DIR/test-fixtures/.hiddenfolder/.hiddenfile-inside.txt"
+  printf "visible\n" > "$TMP_DIR/test-fixtures/.hiddenfolder/visible.txt"
+  mkdir -p "$TMP_DIR/test-fixtures/.hiddenfolder/.hidden-subfolder"
+  printf "subfile\n" > "$TMP_DIR/test-fixtures/.hiddenfolder/.hidden-subfolder/subfile.txt"
 }
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
@@ -259,8 +278,8 @@ build_arg() {
   local path_mode="$1"; shift
   local rel="$1"; shift
   if [[ "$path_mode" == "absolute" ]]; then
-    # 確保返回絕對路徑（TMP_DIR 已經是絕對路徑）
-    echo "$TMP_DIR/$rel"
+    # 返回 test-fixtures 的絕對路徑
+    echo "$TMP_DIR/test-fixtures/$rel"
   else
     echo "$rel"
   fi
@@ -287,7 +306,7 @@ run_suite_for_mode() {
   echo "Mode: $mode, Path Mode: $path_mode" >> "$ERR"
   echo "========================================" >> "$ERR"
 
-  pushd "$TMP_DIR" >/dev/null
+  pushd "$TMP_DIR/test-fixtures" >/dev/null
 
   # 1. 無參數
   code=$(capture "$mode" "[$path_mode] no args exit" "$OUT" "$ERR")
@@ -352,13 +371,120 @@ run_suite_for_mode() {
   assert_exit 0 "$code" "[$path_mode] output override"
   assert_not_contains "$OUT" '[' "[$path_mode] classic output not json"
 
-  # 12. regex 測試（跳過功能面）——只驗證 usage guard 存在
-  code=$(capture "$mode" "[$path_mode] regex usage guard" "$OUT" "$ERR" --regex)
-  if [[ "$code" -eq 64 ]]; then
-    skip "[$path_mode] regex functional tests skipped (usage guard present)"
+  # 12. regex args 可以用 args 搜尋，多個時應該為聯集，且不可重複
+  code=$(capture "$mode" "[$path_mode] regex args search with long" "$OUT" "$ERR" --regex 'e*' --long --output=json)
+  assert_exit 0 "$code" "[$path_mode] regex args search with long exit"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex args search finds exist.txt"
+  assert_contains "$OUT" '"isDir":false' "[$path_mode] regex args search shows exist.txt as file"
+  assert_contains "$OUT" 'exist' "[$path_mode] regex args search finds exist dir"
+  # 驗證 exist 目錄的 isDir 資訊（JSON 格式中）
+  if grep -q '"isDir":true' "$OUT" 2>/dev/null || grep -q '"isDir": true' "$OUT" 2>/dev/null; then
+    ok "[$path_mode] regex args search with long shows isDir info for directory"
   else
-    skip "[$path_mode] regex tests skipped"
+    ko "[$path_mode] regex args search with long missing isDir info for directory"
+    record_error "[$path_mode] regex args search with long" "missing isDir:true for directory in JSON output"
   fi
+
+  # 13. regex - 當前目錄 .txt 檔
+  code=$(capture "$mode" "[$path_mode] regex current dir txt" "$OUT" "$ERR" --regex '^[^/]*\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex current dir exit"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex finds exist.txt"
+  assert_contains "$OUT" 'example.txt' "[$path_mode] regex finds example.txt"
+  assert_not_contains "$OUT" 'helper.txt' "[$path_mode] regex excludes subdir files"
+
+  # 14. regex - 遞迴搜尋所有 .txt
+  code=$(capture "$mode" "[$path_mode] regex recursive txt" "$OUT" "$ERR" --regex '^.*\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex recursive exit"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex recursive finds root"
+  assert_contains "$OUT" 'helper.txt' "[$path_mode] regex recursive finds nested"
+
+  # 15. regex - 多個 patterns 聯集
+  code=$(capture "$mode" "[$path_mode] regex multiple patterns" "$OUT" "$ERR" --regex '^[^/]*\.txt$' '^app\.js$')
+  assert_exit 0 "$code" "[$path_mode] regex union exit"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex union has txt"
+  assert_contains "$OUT" 'app.js' "[$path_mode] regex union has js"
+
+  # 15a. regex - 多個 patterns 去重（同一個檔案被多個 pattern 匹配）
+  code=$(capture "$mode" "[$path_mode] regex deduplicate" "$OUT" "$ERR" --regex '^exist\.txt$' '^.*\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex deduplicate exit"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex deduplicate contains exist.txt"
+  assert_contains "$OUT" 'example.txt' "[$path_mode] regex deduplicate contains example.txt"
+  # 驗證 exist.txt 只出現一次
+  local test_output_info_file="${OUT}.current_test_info"
+  local current_test_file=""
+  if [[ -f "$test_output_info_file" ]]; then
+    current_test_file=$(cat "$test_output_info_file" 2>/dev/null || echo "")
+  fi
+  local exist_count=0
+  if [[ -n "$current_test_file" && -f "$current_test_file" && -s "$current_test_file" ]]; then
+    exist_count=$(grep -o 'exist\.txt' "$current_test_file" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+  else
+    exist_count=$(grep -o 'exist\.txt' "$OUT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+  fi
+  if [[ "$exist_count" == "1" ]]; then
+    ok "[$path_mode] regex deduplicate exist.txt appears only once"
+  else
+    ko "[$path_mode] regex deduplicate exist.txt appears $exist_count times (expected 1)"
+    record_error "[$path_mode] regex deduplicate" "exist.txt appears $exist_count times, expected 1"
+  fi
+
+  # 16. regex - 匹配目錄
+  code=$(capture "$mode" "[$path_mode] regex match dir" "$OUT" "$ERR" --regex '^src$')
+  assert_exit 0 "$code" "[$path_mode] regex dir exit"
+  assert_contains "$OUT" 'config.js' "[$path_mode] regex dir lists children"
+
+  # 17. regex - 無效 pattern
+  code=$(capture "$mode" "[$path_mode] regex invalid pattern" "$OUT" "$ERR" --regex '*' || true)
+  assert_exit 3 "$code" "[$path_mode] regex invalid exit=3"
+  assert_contains "$ERR" "Invalid regular expression" "[$path_mode] regex invalid error msg"
+
+  # 18. regex - 部分無效 patterns
+  code=$(capture "$mode" "[$path_mode] regex partial invalid" "$OUT" "$ERR" --regex '^exist\.txt$' '*' || true)
+  assert_exit 3 "$code" "[$path_mode] regex partial invalid exit=3"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex partial outputs valid"
+  assert_contains "$ERR" "Invalid regular expression" "[$path_mode] regex partial shows error"
+
+  # 19. regex - 匹配隱藏資料夾（. 開頭）
+  code=$(capture "$mode" "[$path_mode] regex match hidden folder" "$OUT" "$ERR" --regex '^\.hiddenfolder$')
+  assert_exit 0 "$code" "[$path_mode] regex hidden folder exit"
+  assert_contains "$OUT" 'visible.txt' "[$path_mode] regex hidden folder shows visible children (folder lists first level)"
+
+  # 20. regex - 匹配隱藏資料夾中的第一層檔案
+  code=$(capture "$mode" "[$path_mode] regex match files in hidden folder first level" "$OUT" "$ERR" --regex '^\.hiddenfolder/[^/]*\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex files in hidden folder first level exit"
+  assert_contains "$OUT" '.hiddenfolder/visible.txt' "[$path_mode] regex finds visible file in hidden folder"
+  assert_contains "$OUT" '.hiddenfolder/.hiddenfile-inside.txt' "[$path_mode] regex finds hidden file in hidden folder"
+  assert_not_contains "$OUT" '.hiddenfolder/.hidden-subfolder/subfile.txt' "[$path_mode] regex excludes files in subfolder"
+
+  # 21. regex - 匹配隱藏資料夾中的所有檔案（包括子資料夾，遞迴）
+  code=$(capture "$mode" "[$path_mode] regex match all files in hidden folder recursive" "$OUT" "$ERR" --regex '^\.hiddenfolder/.*\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex hidden folder recursive exit"
+  assert_contains "$OUT" '.hiddenfolder/visible.txt' "[$path_mode] regex recursive finds first level file"
+  assert_contains "$OUT" '.hiddenfolder/.hidden-subfolder/subfile.txt' "[$path_mode] regex recursive finds file in hidden subfolder"
+
+  # 22. regex - 匹配資料夾中的隱藏檔案（要求有 /）
+  code=$(capture "$mode" "[$path_mode] regex match hidden files in folders" "$OUT" "$ERR" --regex '^.*/\.hidden.*\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex hidden files in folders exit"
+  assert_not_contains "$OUT" '.hiddenfile.txt' "[$path_mode] regex excludes root hidden file (requires /)"
+  assert_contains "$OUT" '.hiddenfolder/.hiddenfile-inside.txt' "[$path_mode] regex finds hidden file in hidden folder"
+
+  # 23. regex - 匹配當前目錄的隱藏檔案
+  code=$(capture "$mode" "[$path_mode] regex match root hidden files" "$OUT" "$ERR" --regex '^\.hiddenfile\.txt$')
+  assert_exit 0 "$code" "[$path_mode] regex root hidden file exit"
+  assert_contains "$OUT" '.hiddenfile.txt' "[$path_mode] regex finds root hidden file"
+
+  # 24. regex - 合法 pattern 但沒有匹配到任何檔案
+  code=$(capture "$mode" "[$path_mode] regex no match" "$OUT" "$ERR" --regex '^nonexistent\.mp3$' || true)
+  assert_exit 3 "$code" "[$path_mode] regex no match exit=3"
+  assert_contains "$ERR" "No such file or directory" "[$path_mode] regex no match error msg"
+  assert_contains "$ERR" "nonexistent" "[$path_mode] regex no match contains pattern"
+
+  # 25. regex - 多個 patterns 部分沒匹配到
+  code=$(capture "$mode" "[$path_mode] regex partial no match" "$OUT" "$ERR" --regex '^exist\.txt$' '^nonexistent\.mp3$' || true)
+  assert_exit 3 "$code" "[$path_mode] regex partial no match exit=3"
+  assert_contains "$OUT" 'exist.txt' "[$path_mode] regex partial no match outputs valid"
+  assert_contains "$ERR" "No such file or directory" "[$path_mode] regex partial no match error msg"
+  assert_contains "$ERR" "nonexistent" "[$path_mode] regex partial no match contains pattern"
 
   popd >/dev/null
   
@@ -377,10 +503,9 @@ main() {
   note "Repo: $ROOT_DIR"
   make_fixture
   
-  # 在臨時目錄中創建輸出檔案（只清空一次）
-  # 使用絕對路徑，確保在所有目錄下都能正確存取
-  OUT="$(cd "$TMP_DIR" && pwd)/out.txt"
-  ERR="$(cd "$TMP_DIR" && pwd)/err.txt"
+  # 在 test-output 目錄中創建輸出檔案（只清空一次）
+  OUT="$TMP_DIR/test-output/out.txt"
+  ERR="$TMP_DIR/test-output/err.txt"
   > "$OUT"
   > "$ERR"
 
@@ -403,10 +528,12 @@ main() {
   if [[ -n "${TMP_DIR}" && -d "${TMP_DIR}" ]]; then
     echo ""
     note "Test files preserved in: $TMP_DIR"
+    note "  - Test fixtures: $TMP_DIR/test-fixtures"
+    note "  - Test output: $TMP_DIR/test-output"
     note "To clean up manually, run: rm -rf $TMP_DIR"
     note "To auto-cleanup next time, run: CLEANUP_TMP=1 bash $0"
-    if [[ -f "$TMP_DIR/test-case-fail.txt" ]]; then
-      note "Failed test cases extracted to: $TMP_DIR/test-case-fail.txt"
+    if [[ -f "$TMP_DIR/test-output/test-case-fail.txt" ]]; then
+      note "Failed test cases: $TMP_DIR/test-output/test-case-fail.txt"
     fi
   fi
   
@@ -416,7 +543,7 @@ main() {
 # 從 err.txt 提取失敗的測試用例到 test-case-fail.txt（保持 err.txt 的格式）
 extract_failed_cases() {
   local err_file="$1"
-  local fail_file="$(dirname "$err_file")/test-case-fail.txt"
+  local fail_file="$TMP_DIR/test-output/test-case-fail.txt"
   
   if [[ ! -f "$err_file" ]]; then
     return
