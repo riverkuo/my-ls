@@ -436,13 +436,23 @@ run_suite_for_mode() {
   # 17. regex - 無效 pattern
   code=$(capture "$mode" "[$path_mode] regex invalid pattern" "$OUT" "$ERR" --regex '*' || true)
   assert_exit 3 "$code" "[$path_mode] regex invalid exit=3"
-  assert_contains "$ERR" "Invalid regular expression" "[$path_mode] regex invalid error msg"
+  if grep -A 10 "^=== \[$path_mode\] regex invalid pattern ===" "$ERR" 2>/dev/null | grep -qi "Invalid regular expression"; then
+    ok "[$path_mode] regex invalid error msg"
+  else
+    ko "[$path_mode] regex invalid error msg (missing: Invalid regular expression)"
+    record_error "[$path_mode] regex invalid error msg" "missing 'Invalid regular expression' in error output"
+  fi
 
   # 18. regex - 部分無效 patterns
   code=$(capture "$mode" "[$path_mode] regex partial invalid" "$OUT" "$ERR" --regex '^exist\.txt$' '*' || true)
   assert_exit 3 "$code" "[$path_mode] regex partial invalid exit=3"
   assert_contains "$OUT" 'exist.txt' "[$path_mode] regex partial outputs valid"
-  assert_contains "$ERR" "Invalid regular expression" "[$path_mode] regex partial shows error"
+  if grep -A 10 "^=== \[$path_mode\] regex partial invalid ===" "$ERR" 2>/dev/null | grep -qi "Invalid regular expression"; then
+    ok "[$path_mode] regex partial shows error"
+  else
+    ko "[$path_mode] regex partial shows error (missing: Invalid regular expression)"
+    record_error "[$path_mode] regex partial shows error" "missing 'Invalid regular expression' in error output"
+  fi
 
   # 19. regex - 匹配隱藏資料夾（. 開頭）
   code=$(capture "$mode" "[$path_mode] regex match hidden folder" "$OUT" "$ERR" --regex '^\.hiddenfolder$')
