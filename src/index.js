@@ -22,7 +22,13 @@ export async function run(args) {
     }
 
     const { successFiles, errorFiles } = await handleReadFiles({ positionals, longArgs, allArgs, regexArgs });
-    const outputService = new OutputService({ outputArgs, successList: successFiles, errorList: errorFiles, longArgs });
+    const outputService = new OutputService({
+      outputArgs,
+      successList: successFiles,
+      errorList: errorFiles,
+      longArgs,
+      positionals,
+    });
     outputService.printOutput();
   } catch (err) {
     process.exit(1);

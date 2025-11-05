@@ -57,13 +57,8 @@ export class BaseReader {
   }
 
   async #generateDirentPromise(dirPath, dirent) {
-    const isDir = dirent.isDirectory();
-    let stat = null;
-
-    if (!isDir) {
-      const fullPath = path.join(dirPath, dirent.name);
-      stat = await fsPromises.stat(fullPath);
-    }
+    const fullPath = path.join(dirPath, dirent.name);
+    const stat = await fsPromises.stat(fullPath);
 
     const fileInfo = { name: dirent.name };
     return this.formatFile(fileInfo, stat);

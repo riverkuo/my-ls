@@ -2,7 +2,7 @@ import { OUTPUT_OPTIONS } from '../constants/config.js';
 import { generateErrorMsg } from '../utils/error.js';
 
 export class OutputService {
-  constructor({ outputArgs, successList, errorList, longArgs }) {
+  constructor({ outputArgs, successList, errorList, longArgs, positionals }) {
     this.outputArgs = outputArgs;
     this.longArgs = longArgs;
     this.successList = successList;
@@ -12,6 +12,7 @@ export class OutputService {
     this.onlyOneDirectory = successList.length === 1 && successList[0]?.isDir;
     this.successFiles = successList.filter((file) => !file.isDir);
     this.successDirectories = successList.filter((file) => file.isDir);
+    this.isCurrentDirOutput = positionals.length === 0;
   }
 
   printOutput() {
@@ -44,7 +45,12 @@ export class OutputService {
 
   #printClassicFormat() {
     if (this.onlyOneDirectory) {
-      this.#printDirectoryChildren(this.successDirectories[0]);
+      this.#printDirectoryChildren(this.successDirectories[0].children);
+      return;
+    }
+
+    if (this.isCurrentDirOutput) {
+      this.#printDirectoryChildren(this.successList);
       return;
     }
 
@@ -55,12 +61,12 @@ export class OutputService {
     this.successDirectories.forEach((directory) => {
       console.log('\n');
       console.log(directory.name + ':');
-      this.#printDirectoryChildren(directory);
+      this.#printDirectoryChildren(directory.children);
     });
   }
 
-  #printDirectoryChildren(directory) {
-    directory.children.forEach((childFile) => {
+  #printDirectoryChildren(children) {
+    children.forEach((childFile) => {
       console.log(this.#generateResultString(childFile));
     });
   }
