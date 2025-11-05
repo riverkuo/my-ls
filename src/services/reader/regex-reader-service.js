@@ -20,7 +20,7 @@ export class RegexReader extends BaseReader {
   async read({ patterns }) {
     const cwd = process.cwd();
     const errorFiles = [];
-    const allPaths = await this.scanDirectory(cwd, '');
+    const allPaths = await this.#scanDirectory(cwd, '');
 
     const matchedPaths = new Set();
     const patternMatched = new Map();
@@ -45,10 +45,13 @@ export class RegexReader extends BaseReader {
       }
     }
 
+    // 過濾掉被匹配祖先目錄，但保留文件
+    const filteredPaths = await this.#filterPathsWithMatchedAncestors(Array.from(matchedPaths), cwd);
+
     const results = await Promise.all(
-      Array.from(matchedPaths).map((relativePath) => {
-        const fullPath = path.join(cwd, relativePath);
-        return this.readPath(fullPath, relativePath);
+      filteredPaths.map((matchedPath) => {
+        const fullPath = path.join(cwd, matchedPath);
+        return this.readPath(fullPath, matchedPath);
       })
     );
 
@@ -58,7 +61,7 @@ export class RegexReader extends BaseReader {
     };
   }
 
-  async scanDirectory(baseDir, relativePath) {
+  async #scanDirectory(baseDir, relativePath) {
     const results = [];
     const entries = await fsPromises.readdir(path.join(baseDir, relativePath), { withFileTypes: true });
 
@@ -67,11 +70,61 @@ export class RegexReader extends BaseReader {
       results.push(entryRelativePath);
 
       if (entry.isDirectory()) {
-        const subResults = await this.scanDirectory(baseDir, entryRelativePath);
+        const subResults = await this.#scanDirectory(baseDir, entryRelativePath);
         results.push(...subResults);
       }
     }
 
     return results;
+  }
+
+  async #filterPathsWithMatchedAncestors(matchedPaths, cwd) {
+    const matchedPathsSet = new Set(matchedPaths);
+    const filteredPaths = []; // 過濾後的結果
+    const statCache = new Map();
+
+    for (const mp of matchedPaths) {
+      const ancestors = this.#getAncestors(mp);
+      const hasMatchedAncestor = ancestors.some((ancestor) => matchedPathsSet.has(ancestor));
+
+      if (hasMatchedAncestor) {
+        const fullPath = path.join(cwd, mp);
+        let stat;
+        if (statCache.has(fullPath)) {
+          stat = statCache.get(fullPath);
+        } else {
+          try {
+            stat = await fsPromises.stat(fullPath);
+            statCache.set(fullPath, stat);
+          } catch (err) {
+            // 如果無法獲取 stat，跳過過濾（讓後續的 readPath 處理錯誤）
+            filteredPaths.push(mp);
+            continue;
+          }
+        }
+
+        // ** 過濾目錄，跳過這層，進入下一次迭代 **
+        if (stat.isDirectory()) continue;
+      }
+
+      filteredPaths.push(mp);
+    }
+
+    return filteredPaths;
+  }
+
+  #getAncestors(relativePath) {
+    const ancestors = [];
+    let current = relativePath;
+
+    while (current && current !== '.' && current !== path.sep) {
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      if (parent === '.') break;
+      ancestors.push(parent);
+      current = parent;
+    }
+
+    return ancestors;
   }
 }
