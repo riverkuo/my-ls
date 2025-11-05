@@ -85,6 +85,25 @@ export class RegexReader extends BaseReader {
 
     for (const mp of matchedPaths) {
       const ancestors = this.#getAncestors(mp);
+      // 父目錄
+      const directParent = ancestors.length > 0 ? ancestors[0] : null;
+      const hasMatchedDirectParent = directParent && matchedPathsSet.has(directParent);
+
+      // 父目錄被匹配，檢查直接父目錄是否會被過濾
+      if (hasMatchedDirectParent) {
+        // 父目錄的祖先
+        const parentAncestors = directParent ? this.#getAncestors(directParent) : [];
+        const parentWillBeFiltered = parentAncestors.some((ancestor) => matchedPathsSet.has(ancestor));
+
+        // 如果直接父目錄不會被過濾，那麼直接子項應該被過濾（無論文件還是目錄）
+        // 因為直接子項會在父目錄的輸出中顯示
+        if (!parentWillBeFiltered) {
+          continue;
+        }
+        // 如果直接父目錄會被過濾，繼續後續邏輯（根據類型決定是否過濾）
+      }
+
+      // 檢查是否有其他祖先被匹配（用於更深層的路徑）
       const hasMatchedAncestor = ancestors.some((ancestor) => matchedPathsSet.has(ancestor));
 
       if (hasMatchedAncestor) {
