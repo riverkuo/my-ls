@@ -36,30 +36,31 @@ function printOutput({ outputArgs, successFiles, errorFiles }) {
 
 
   if (hasSuccess) {
+    const directories = successFiles.filter((file) => file.isDir);
+    const files = successFiles.filter((file) => !file.isDir);
+
+
     if (outputArgs === OUTPUT_OPTIONS.JSON) {
-      console.log(JSON.stringify(successFiles));
+      console.log(JSON.stringify(files.concat(directories)));
     } else {
-      successFiles.forEach((file,index) => {
-        if (successFiles.length > 1 && file.isDir) {
-            console.log(file.name+":");
-          } else if(file.isDir && successFiles.length === 1) {
-          } else {
-            console.log(generateResultString(file));
-          }
-
-        if (file.children) {
-          file.children.forEach((childFile) => {
-              console.log(generateResultString(childFile));
-          });
-        }
-
-        const nextFile = successFiles[index + 1];
-
-        if(nextFile && !nextFile.isDir && file.isDir) {
+      const onlyOneDirectory = successFiles.length === 1 && successFiles[0]?.isDir;
+      
+      if(onlyOneDirectory) {
+        successFiles[0].children.forEach((childFile) => {
+          console.log(generateResultString(childFile));
+        });
+      } else {
+        files.forEach((file) => {
+          console.log(generateResultString(file));
+        });
+        directories.forEach((directory) => {
           console.log('\n');
-        }
-
-      });
+          console.log(directory.name + ":");
+          directory.children.forEach((childFile) => {
+            console.log(generateResultString(childFile));
+          });
+        });
+      }
     }
   }
 
