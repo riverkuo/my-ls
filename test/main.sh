@@ -546,7 +546,7 @@ run_suite_for_mode() {
   assert_contains "$ERR" "nonexistent" "[$path_mode] regex partial no match contains pattern"
 
   # 26. regex - 過濾被匹配祖先目錄的子目錄（但保留文件）
-  # Pattern 'exist' 會匹配 exist 目錄，應該過濾掉 exist/exist 目錄，但保留 exist/exist/exist.js 文件
+  # Pattern 'exist' 會匹配 exist 目錄，應該過濾掉 exist/exist 目錄和 exist/index.js，但保留 exist/exist/exist.js 文件
   code=$(capture "$mode" "[$path_mode] regex filter nested dirs" "$OUT" "$ERR" --regex 'exist')
   assert_exit 0 "$code" "[$path_mode] regex filter nested dirs exit"
   assert_contains "$OUT" 'exist:' "[$path_mode] regex filter shows matched dir"
@@ -554,6 +554,8 @@ run_suite_for_mode() {
   assert_contains "$OUT" 'exist/exist/non/exist.js' "[$path_mode] regex filter keeps nested file in non-dir"
   # 驗證 exist/exist 目錄不會單獨顯示（因為被父目錄過濾）
   assert_not_contains "$OUT" 'exist/exist:' "[$path_mode] regex filter excludes nested matched dir"
+  # 驗證 exist/index.js 不會單獨顯示（因為直接父目錄 exist 被匹配且不會被過濾）
+  assert_not_contains "$OUT" 'exist/index.js' "[$path_mode] regex filter excludes direct child file"
 
   # 27. regex - 多個 patterns 聯集的過濾邏輯
   # Patterns 'exist' 和 'exist\.js' 的聯集，應該正確過濾
@@ -563,6 +565,8 @@ run_suite_for_mode() {
   assert_contains "$OUT" 'exist/exist/exist.js' "[$path_mode] regex multiple patterns filter keeps nested file"
   assert_contains "$OUT" 'exist/exist/non/exist.js' "[$path_mode] regex multiple patterns filter keeps nested file"
   assert_not_contains "$OUT" 'exist/exist:' "[$path_mode] regex multiple patterns filter excludes nested matched dir"
+  # 驗證 exist/index.js 不會單獨顯示（因為直接父目錄 exist 被匹配且不會被過濾）
+  assert_not_contains "$OUT" 'exist/index.js' "[$path_mode] regex multiple patterns filter excludes direct child file"
 
   popd >/dev/null
   
