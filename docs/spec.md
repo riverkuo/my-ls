@@ -128,6 +128,8 @@ graph TD
 - `~/Document/.hiddenfolder/.hiddenfile-inside.txt`
 - `~/Document/.hiddenfolder/visible.txt`
 - `~/Document/.hiddenfolder/.hidden-subfolder/subfile.txt`
+- `~/Document/exist/exist/exist.js`
+- `~/Document/exist/exist/non/exist.js`
 
 <br/>
 <br/>
@@ -264,6 +266,116 @@ WHEN：my-ls --output=json --output=classic
 
 THEN：
 classic 格式輸出（不是 JSON 格式）
+
+<br/>
+<br/>
+
+## Regex Reader 過濾邏輯
+
+### 核心邏輯
+
+當使用 `--regex` 參數時，RegexReader 會匹配所有符合 pattern 的路徑。為了避免重複輸出，實現了**智能過濾邏輯**：
+
+**過濾規則**：
+
+- 如果路徑的**祖先目錄**也被匹配，且當前路徑是**目錄** → **過濾掉**（因為父目錄會顯示子內容）
+- 如果路徑的**祖先目錄**也被匹配，但當前路徑是**文件** → **保留**（因為文件不會顯示子內容）
+- 如果路徑的**祖先目錄**未被匹配 → **保留**
+
+### 實現細節
+
+1. **獲取祖先目錄**：對於每個匹配的路徑，使用 `getAncestors()` 方法獲取所有祖先目錄路徑
+
+   - 例如：`exist/exist/exist.js` 的祖先是 `["exist/exist", "exist"]`
+   - 例如：`exist` 的祖先是 `[]`（沒有祖先）
+
+2. **檢查匹配**：檢查是否有任何祖先目錄也在匹配結果中
+
+   - 使用 `Set` 進行 O(1) 時間複雜度的查找
+
+3. **判斷類型**：使用 `fs.stat()` 判斷路徑是文件還是目錄
+
+   - 只有當路徑有匹配的祖先時，才需要獲取 stat 信息
+   - 使用 `statCache` 緩存 stat 結果，避免重複 I/O 操作
+
+4. **性能優化**：
+
+   - 使用 `Set` 存儲匹配結果，快速查找
+   - 使用 `Map` 緩存 stat 結果，避免對同一路徑重複調用 `fs.stat()`
+
+5. **錯誤處理**：
+   - 如果無法獲取 stat（例如文件不存在、權限不足、競態條件等），跳過過濾
+   - 將該路徑保留在結果中，讓後續的 `readPath` 統一處理錯誤
+   - 這樣可以確保錯誤處理的一致性，不會因為過濾階段無法獲取 stat 就誤刪路徑
+
+### 無法獲取 stat 的情況
+
+以下情況可能導致 `fs.stat()` 失敗：
+
+- **文件/目錄不存在**：在掃描和過濾之間，文件被刪除或移動（競態條件）
+- **權限不足**：沒有讀取權限的文件或目錄
+- **符號連結損壞**：符號連結指向不存在的目標
+- **其他文件系統錯誤**：磁盤錯誤、網絡文件系統問題等
+
+當遇到這些情況時，過濾邏輯會保留該路徑，讓後續的 `readPath` 統一處理錯誤，確保錯誤信息的一致性和準確性。
+
+### 範例
+
+**結構**：
+
+```
+exist/
+  exist/
+    exist.js
+    non/
+      exist.js
+```
+
+**Pattern**: `exist`
+
+**匹配結果**：
+
+- `exist` (目錄)
+- `exist/exist` (目錄)
+- `exist/exist/exist.js` (文件)
+- `exist/exist/non` (目錄)
+- `exist/exist/non/exist.js` (文件)
+
+**過濾過程**：
+
+1. `exist` → 無匹配祖先 → **保留**
+2. `exist/exist` → 祖先 `exist` 被匹配，且是目錄 → **過濾**
+3. `exist/exist/exist.js` → 祖先 `exist` 被匹配，但是文件 → **保留**
+4. `exist/exist/non` → 祖先 `exist` 被匹配，且是目錄 → **過濾**
+5. `exist/exist/non/exist.js` → 祖先 `exist` 被匹配，但是文件 → **保留**
+
+**最終輸出**：
+
+- `exist:` + 第一層內容
+- `exist/exist/exist.js`
+- `exist/exist/non/exist.js`
+
+### 多個 Patterns 的聯集
+
+當提供多個 patterns 時，過濾邏輯同樣適用：
+
+- 所有 patterns 的匹配結果會先進行**聯集**（去重）
+- 然後對聯集結果應用相同的過濾邏輯
+- 過濾邏輯不依賴 pattern 的數量或類型，只依賴最終的匹配結果
+
+### 為什麼需要過濾？
+
+當 regex pattern 匹配到目錄時，該目錄的所有子路徑也會被匹配，導致：
+
+- 父目錄會顯示第一層子內容
+- 子路徑也會被單獨顯示
+- 造成重複輸出
+
+過濾邏輯確保：
+
+- 目錄只顯示一次（父目錄輸出）
+- 文件正確顯示（不會被父目錄覆蓋）
+- 符合 `ls` 的預期行為
 
 <br/>
 <br/>
@@ -441,6 +553,36 @@ WHEN：my-ls --regex '^exist\.txt$' '^nonexistent\.mp3$'
 THEN：
 exist.txt (正常輸出)
 process.stderr.write (No such file or directory) 、process.exit(3)
+
+<br/>
+<br/>
+
+[x] 26. regex - 過濾被匹配祖先目錄的子目錄（但保留文件）
+
+WHEN：my-ls --regex 'exist'
+
+THEN：
+exist:
+(目錄的第一層內容)
+
+exist/exist/exist.js
+exist/exist/non/exist.js
+(嵌套的文件被保留，但嵌套的目錄 exist/exist 不會單獨顯示，因為被父目錄 exist 過濾)
+
+<br/>
+<br/>
+
+[x] 27. regex - 多個 patterns 聯集的過濾邏輯
+
+WHEN：my-ls --regex 'exist' 'exist\.js'
+
+THEN：
+exist:
+(目錄的第一層內容)
+
+exist/exist/exist.js
+exist/exist/non/exist.js
+(多個 patterns 的聯集結果，過濾邏輯與單一 pattern 相同：過濾被匹配祖先目錄的子目錄，但保留文件)
 
 <br/>
 <br/>
