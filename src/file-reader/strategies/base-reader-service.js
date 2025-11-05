@@ -1,10 +1,16 @@
 import { filterHiddenFiles } from '../../utils/index.js';
+import fsPromises from 'fs/promises';
+import path from 'path';
 
 export class BaseReader {
   constructor({ longArgs, allArgs }) {
     this.longArgs = longArgs;
     this.allArgs = allArgs;
     this.formatter = longArgs ? new LongFormatter() : new ShortFormatter();
+  }
+
+  async read(options) {
+    throw new Error('read() must be implemented by subclass');
   }
 
   formatFile(fileInfo, stat) {
@@ -18,8 +24,49 @@ export class BaseReader {
     return filterHiddenFiles(files);
   }
 
-  async read(options) {
-    throw new Error('read() must be implemented by subclass');
+  async readPath(fullPath, displayName) {
+    try {
+      const stat = await fsPromises.stat(fullPath);
+      const fileInfo = { name: displayName };
+
+      // 如果是目錄，讀取第一層子內容
+      if (stat.isDirectory()) {
+        const children = await this.readDirectory(fullPath);
+        fileInfo.children = children;
+      }
+
+      return this.formatFile(fileInfo, stat);
+    } catch (err) {
+      return { name: displayName, error: true };
+    }
+  }
+
+  async readDirectory(dirPath) {
+    if (this.longArgs) {
+      const direntList = await fsPromises.readdir(dirPath, {
+        withFileTypes: true,
+      });
+      const promises = direntList.map((dirent) => this._generateDirentPromise(dirPath, dirent));
+      const files = await Promise.all(promises);
+      return this.getFileResults(files);
+    }
+
+    const files = await fsPromises.readdir(dirPath);
+    const fileList = files.map((name) => ({ name }));
+    return this.getFileResults(fileList);
+  }
+
+  async _generateDirentPromise(dirPath, dirent) {
+    const isDir = dirent.isDirectory();
+    let stat = null;
+
+    if (!isDir) {
+      const fullPath = path.join(dirPath, dirent.name);
+      stat = await fsPromises.stat(fullPath);
+    }
+
+    const fileInfo = { name: dirent.name };
+    return this.formatFile(fileInfo, stat);
   }
 }
 
