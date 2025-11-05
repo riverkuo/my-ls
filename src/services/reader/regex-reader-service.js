@@ -41,7 +41,7 @@ export class RegexReader extends BaseReader {
           errorFiles.push({ name: pattern, error: true });
         }
       } catch (err) {
-        errorFiles.push({ name: pattern, error: true });
+        errorFiles.push({ name: pattern, error: true, errorType: 'invalid_regex' });
       }
     }
 

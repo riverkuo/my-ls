@@ -1,4 +1,4 @@
-import { filterHiddenFiles } from '../../utils/index.js';
+import { filterHiddenFiles } from '../../utils/file.js';
 import fsPromises from 'fs/promises';
 import path from 'path';
 
@@ -46,7 +46,7 @@ export class BaseReader {
       const direntList = await fsPromises.readdir(dirPath, {
         withFileTypes: true,
       });
-      const promises = direntList.map((dirent) => this._generateDirentPromise(dirPath, dirent));
+      const promises = direntList.map((dirent) => this.#generateDirentPromise(dirPath, dirent));
       const files = await Promise.all(promises);
       return this.getFileResults(files);
     }
@@ -56,7 +56,7 @@ export class BaseReader {
     return this.getFileResults(fileList);
   }
 
-  async _generateDirentPromise(dirPath, dirent) {
+  async #generateDirentPromise(dirPath, dirent) {
     const isDir = dirent.isDirectory();
     let stat = null;
 
