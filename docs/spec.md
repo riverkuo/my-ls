@@ -4,18 +4,31 @@
 
 <br/>
 
-## 專案架構 TODO
+## 專案架構
 
 ```javascript
-|-- docs          // 相關文件
+|-- docs                          // 相關文件
 |   |-- spec.md
 |-- bin
-|   |--cli.js     // 入口點，要放在 package.json 中，並引用 index.js
+|   |-- cli.js                    // 入口點，要放在 package.json 中，並引用 index.js
 |-- src
-|   |-- index.js  // 解析參數、呼叫 core.js、回傳，只處理 I/O
-|   |-- core.js   // 核心的呼叫邏輯，會根據 flags 做不同的事情
-|   |-- utils
-|        |-- ...
+|   |-- index.js                  // 解析參數、呼叫 services、處理 I/O
+|   |-- constants/
+|   |   |-- config.js             // 配置常數（ARGS, OPTIONS, OUTPUT_OPTIONS）
+|   |-- services/
+|   |   |-- help-and-version-service.js  // Help 和 Version 輸出服務
+|   |   |-- output-service.js            // 檔案輸出服務
+|   |   |-- reader/
+|   |   |   |-- index.js                 // 根據參數選擇 Reader
+|   |   |   |-- base-reader-service.js   // BaseReader - 共用的一些 function 在這裡
+|   |   |   |-- path-reader-service.js   // PathReader - 讀取指定路徑
+|   |   |   |-- regex-reader-service.js  // RegexReader - 用 regex 匹配檔案
+|   |   |   |-- directory-reader-service.js  // DirectoryReader - 讀取當前目錄
+|   |-- utils/
+|   |   |-- error.js              // error 相關 utils
+|   |   |-- file.js               // 檔案相關 utils
+|-- test/
+|   |-- main.sh                   // E2E 測試腳本
 |-- package.json
 ```
 
