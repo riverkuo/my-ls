@@ -54,6 +54,11 @@ make_fixture() {
   printf "visible\n" > "$TMP_DIR/test-fixtures/.hiddenfolder/visible.txt"
   mkdir -p "$TMP_DIR/test-fixtures/.hiddenfolder/.hidden-subfolder"
   printf "subfile\n" > "$TMP_DIR/test-fixtures/.hiddenfolder/.hidden-subfolder/subfile.txt"
+  # 創建嵌套結構來測試 regex 過濾邏輯（exist/exist/exist.js）
+  mkdir -p "$TMP_DIR/test-fixtures/exist/exist"
+  printf "console.log('nested')\n" > "$TMP_DIR/test-fixtures/exist/exist/exist.js"
+  mkdir -p "$TMP_DIR/test-fixtures/exist/exist/non"
+  printf "console.log('non')\n" > "$TMP_DIR/test-fixtures/exist/exist/non/exist.js"
 }
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
@@ -539,6 +544,25 @@ run_suite_for_mode() {
   assert_contains "$OUT" 'exist.txt' "[$path_mode] regex partial no match outputs valid"
   assert_contains "$ERR" "No such file or directory" "[$path_mode] regex partial no match error msg"
   assert_contains "$ERR" "nonexistent" "[$path_mode] regex partial no match contains pattern"
+
+  # 26. regex - 過濾被匹配祖先目錄的子目錄（但保留文件）
+  # Pattern 'exist' 會匹配 exist 目錄，應該過濾掉 exist/exist 目錄，但保留 exist/exist/exist.js 文件
+  code=$(capture "$mode" "[$path_mode] regex filter nested dirs" "$OUT" "$ERR" --regex 'exist')
+  assert_exit 0 "$code" "[$path_mode] regex filter nested dirs exit"
+  assert_contains "$OUT" 'exist:' "[$path_mode] regex filter shows matched dir"
+  assert_contains "$OUT" 'exist/exist/exist.js' "[$path_mode] regex filter keeps nested file"
+  assert_contains "$OUT" 'exist/exist/non/exist.js' "[$path_mode] regex filter keeps nested file in non-dir"
+  # 驗證 exist/exist 目錄不會單獨顯示（因為被父目錄過濾）
+  assert_not_contains "$OUT" 'exist/exist:' "[$path_mode] regex filter excludes nested matched dir"
+
+  # 27. regex - 多個 patterns 聯集的過濾邏輯
+  # Patterns 'exist' 和 'exist\.js' 的聯集，應該正確過濾
+  code=$(capture "$mode" "[$path_mode] regex multiple patterns filter" "$OUT" "$ERR" --regex 'exist' 'exist\.js')
+  assert_exit 0 "$code" "[$path_mode] regex multiple patterns filter exit"
+  assert_contains "$OUT" 'exist:' "[$path_mode] regex multiple patterns filter shows matched dir"
+  assert_contains "$OUT" 'exist/exist/exist.js' "[$path_mode] regex multiple patterns filter keeps nested file"
+  assert_contains "$OUT" 'exist/exist/non/exist.js' "[$path_mode] regex multiple patterns filter keeps nested file"
+  assert_not_contains "$OUT" 'exist/exist:' "[$path_mode] regex multiple patterns filter excludes nested matched dir"
 
   popd >/dev/null
   
