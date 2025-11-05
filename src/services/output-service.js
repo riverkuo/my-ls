@@ -75,7 +75,7 @@ export class OutputService {
     return (
       file.name +
       (this.longArgs
-        ? ` | ${file.isDir ? 'd' : 'f'} | ${file.size ? file.size + 'kb' : '-'} | ${file.mtime ? file.mtime : '-'}`
+        ? ` | ${file.isDir ? 'd' : 'f'} | ${file.size ? file.size + 'b' : '-'} | ${file.mtime ? file.mtime : '-'}`
         : '')
     );
   }

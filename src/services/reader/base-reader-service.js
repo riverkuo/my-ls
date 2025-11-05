@@ -87,7 +87,7 @@ class LongFormatter {
     return {
       ...fileInfo,
       isDir: stat?.isDirectory() ?? false,
-      size: stat?.size,
+      size: !stat?.isDirectory() && stat?.size,
       mtime: stat?.mtime,
       mode: stat?.mode,
       isSymbolicLink: stat?.isSymbolicLink() ?? false,
