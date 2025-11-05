@@ -273,6 +273,41 @@ assert_not_contains() {
   fi
 }
 
+assert_json_isDir() {
+  local file="$1"; shift
+  local filename="$1"; shift
+  local expected_value="$1"; shift  # "true" 或 "false"
+  local name="$*"
+  
+  # 從臨時檔案讀取當前測試的輸出檔案路徑（因為 capture 在子 shell 中執行）
+  local test_output_info_file="${file}.current_test_info"
+  local current_test_file=""
+  if [[ -f "$test_output_info_file" ]]; then
+    current_test_file=$(cat "$test_output_info_file" 2>/dev/null || echo "")
+  fi
+  
+  # 如果設置了當前測試的輸出檔案，只檢查該檔案
+  local check_file=""
+  if [[ -n "$current_test_file" && -f "$current_test_file" && -s "$current_test_file" ]]; then
+    check_file="$current_test_file"
+  else
+    check_file="$file"
+  fi
+  
+  # 使用 grep 匹配包含文件名和对应 isDir 值的 JSON 对象
+  # 模式：匹配 "name":"filename" 后面跟着 "isDir":expected_value
+  # 支持两种 JSON 格式：紧凑型和带空格型
+  if grep -q "\"name\":\"${filename}\".*\"isDir\":${expected_value}" "$check_file" 2>/dev/null || \
+     grep -q "\"name\": *\"${filename}\".*\"isDir\": *${expected_value}" "$check_file" 2>/dev/null || \
+     grep -q "\"name\":\"${filename}\".*\"isDir\": *${expected_value}" "$check_file" 2>/dev/null || \
+     grep -q "\"name\": *\"${filename}\".*\"isDir\":${expected_value}" "$check_file" 2>/dev/null; then
+    ok "$name"
+  else
+    ko "$name (expected $filename isDir=$expected_value)"
+    record_error "$name" "expected $filename isDir=$expected_value in JSON output"
+  fi
+}
+
 build_arg() {
   # build_arg <path_mode> <relative>
   local path_mode="$1"; shift
@@ -319,10 +354,19 @@ run_suite_for_mode() {
   assert_exit 0 "$code" "[$path_mode] --all exit"
   assert_contains "$OUT" '.hiddenfile.txt' "[$path_mode] --all shows hidden"
 
-  # 3. --long（用 JSON 驗證鍵名）
+  # 3. --long（用 JSON 驗證鍵名和 isDir 值）
   code=$(capture "$mode" "[$path_mode] --long --output=json exit" "$OUT" "$ERR" --long --output=json)
   assert_exit 0 "$code" "[$path_mode] --long --output=json exit"
   assert_contains "$OUT" '"isDir"' "[$path_mode] --long json includes isDir key"
+  # 動態獲取當前目錄的第一個檔案和第一個目錄來驗證 isDir 值
+  local file_name=$(find . -maxdepth 1 -type f ! -name '.*' | sed 's|^\./||' | head -1)
+  local dir_name=$(find . -maxdepth 1 -type d ! -name '.' ! -name '.*' | sed 's|^\./||' | head -1)
+  if [[ -n "$file_name" ]]; then
+    assert_json_isDir "$OUT" "$file_name" "false" "[$path_mode] --long json shows $file_name as file (isDir=false)"
+  fi
+  if [[ -n "$dir_name" ]]; then
+    assert_json_isDir "$OUT" "$dir_name" "true" "[$path_mode] --long json shows $dir_name as directory (isDir=true)"
+  fi
 
   # 4. output=json
   code=$(capture "$mode" "[$path_mode] --output=json exit" "$OUT" "$ERR" --output=json)
